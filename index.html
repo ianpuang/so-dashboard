@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SO Contribution Dashboard</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --card:#ffffff; --ink:#1a1a18; --muted:#6d6c66; --faint:#96958e;
+    --line:#e4e3dd; --line-strong:#cfceC7;
+    --bar:#2a78d6; --bar-top:#185fa5;
+    --ok-bg:#e7f4e7; --ok-ink:#256d25; --ok-dot:#2f9e2f;
+    --warn-bg:#faeeda; --warn-ink:#854f0b;
+    --top-row:#eef4fc;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a3a29a; --faint:#7d7c75;
+      --line:#33332f; --line-strong:#4a4944;
+      --bar:#4a90e2; --bar-top:#85b7eb;
+      --ok-bg:#1d3320; --ok-ink:#8fd08f; --ok-dot:#4caf50;
+      --warn-bg:#3a2c14; --warn-ink:#f0c070;
+      --top-row:#1c2a3a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:20px 16px 40px;
+  }
+  .wrap{max-width:960px; margin:0 auto}
+  header{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px}
+  h1{font-size:21px; font-weight:600; margin:0}
+  .sub{font-size:13px; color:var(--muted); margin-top:3px}
+  .hright{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .pill{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; padding:5px 12px; border-radius:999px; background:var(--ok-bg); color:var(--ok-ink); white-space:nowrap}
+  .pill .dot{width:8px; height:8px; border-radius:50%; background:var(--ok-dot)}
+  .pill.warn{background:var(--warn-bg); color:var(--warn-ink)}
+  .pill.warn .dot{background:var(--warn-ink)}
+  select{
+    font:inherit; font-size:13px; color:var(--ink); background:var(--card);
+    border:1px solid var(--line-strong); border-radius:8px; padding:5px 8px;
+  }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:16px}
+  .chead{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  .ctitle{font-size:15px; font-weight:600}
+  .seg{display:inline-flex; border:1px solid var(--line-strong); border-radius:8px; overflow:hidden}
+  .seg button{
+    font:inherit; font-size:13px; padding:5px 16px; border:0; cursor:pointer;
+    background:transparent; color:var(--muted);
+  }
+  .seg button[aria-pressed="true"]{background:var(--bar); color:#fff}
+  .chartScroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .chartInner{min-width:720px; height:340px; position:relative}
+  .tableWrap{max-height:62vh; overflow-y:auto; border:1px solid var(--line); border-radius:8px}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  th{
+    text-align:left; font-weight:600; color:var(--muted); padding:8px 10px;
+    border-bottom:1px solid var(--line-strong); position:sticky; top:0; background:var(--card); z-index:1;
+  }
+  th.num, td.num{text-align:right}
+  td{padding:7px 10px; border-bottom:1px solid var(--line)}
+  tr:last-child td{border-bottom:0}
+  tr.top{background:var(--top-row); font-weight:600}
+  td.rank{color:var(--faint); width:46px}
+  footer{font-size:12px; color:var(--faint); text-align:center; margin-top:8px; line-height:1.7}
+  #loadMsg{text-align:center; color:var(--muted); padding:30px 0; font-size:14px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="pageTitle">SO contribution</h1>
+      <div class="sub">Live from Google Sheets · auto-refreshes every <span id="refSecs">60</span>s</div>
+    </div>
+    <div class="hright">
+      <select id="tabSelect" class="hidden" aria-label="Month"></select>
+      <span class="pill" id="status"><span class="dot"></span><span id="statusText">Loading…</span></span>
+    </div>
+  </header>
+
+  <div id="loadMsg">Loading data from Google Sheets…</div>
+
+  <div id="dash" class="hidden">
+    <div class="card">
+      <div class="chead">
+        <div class="ctitle">SO count by individual contribution</div>
+        <div class="seg" data-target="ind">
+          <button aria-pressed="true" data-view="chart">Chart</button>
+          <button aria-pressed="false" data-view="table">Table</button>
+        </div>
+      </div>
+      <div id="ind-chart" class="chartScroll">
+        <div class="chartInner"><canvas id="chartInd" role="img" aria-label="Bar chart of SO count by individual contribution, sorted highest to lowest"></canvas></div>
+      </div>
+      <div id="ind-table" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="chead">
+        <div class="ctitle">SO count by group contribution</div>
+        <div class="seg" data-target="grp">
+          <button aria-pressed="true" data-view="chart">Chart</button>
+          <button aria-pressed="false" data-view="table">Table</button>
+        </div>
+      </div>
+      <div id="grp-chart" class="chartScroll">
+        <div class="chartInner"><canvas id="chartGrp" role="img" aria-label="Bar chart of SO count by group contribution, sorted highest to lowest"></canvas></div>
+      </div>
+      <div id="grp-table" class="hidden"></div>
+    </div>
+  </div>
+
+  <footer>
+    Data source: published Google Sheet · sheet edits appear here within ~5 minutes (Google republish delay)
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ============ CONFIG ============ */
+const PUB_KEY = "2PACX-1vTxTi4jJQmXHlV7tG71ROZ_eXwnSUKU5oxOQ0YMQdRcXnTYrTk--TvbW9JkeMDZR_nAQECsSsqShTtH";
+const DEFAULT_GID = "754850172";      /* used if tab auto-detection fails (currently: so july) */
+const REFRESH_SECONDS = 60;           /* how often the page re-fetches the sheet */
+const COL = { tech: 11, group: 12, indiv: 13 };  /* 0-based: L, M, N */
+/* ================================ */
+
+const BASE = "https://docs.google.com/spreadsheets/d/e/" + PUB_KEY;
+const $ = (id) => document.getElementById(id);
+document.title = "SO Contribution Dashboard";
+$("refSecs").textContent = REFRESH_SECONDS;
+
+let tabs = [];               /* [{gid, name}] discovered from pubhtml */
+let tabsFetchedAt = 0;
+let currentGid = DEFAULT_GID;
+let manualPick = false;      /* user chose a month from the dropdown */
+let charts = {};             /* Chart.js instances */
+let lastGoodTime = null;
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function num(x){
+  const v = parseFloat(String(x ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(v) ? v : 0;
+}
+function parseCSV(text){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else {
+      if (c === '"') q = true;
+      else if (c === ",") { row.push(cur); cur = ""; }
+      else if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+      else if (c !== "\r") cur += c;
+    }
+  }
+  row.push(cur);
+  if (row.length > 1 || row[0] !== "") rows.push(row);
+  return rows;
+}
+function monthLabelFromTab(name){
+  const label = name.replace(/^\s*so\s*/i, "").trim();
+  return label ? label.replace(/\b\w/g, (c) => c.toUpperCase()) : name;
+}
+
+/* ---------- tab discovery (pubhtml sheet menu) ---------- */
+async function loadTabs(){
+  try {
+    const res = await fetch(BASE + "/pubhtml", { cache: "no-store" });
+    if (!res.ok) throw new Error("pubhtml " + res.status);
+    const html = await res.text();
+    const found = [];
+    const re = /sheet-button-(\d+)[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
+    let m;
+    while ((m = re.exec(html)) !== null) found.push({ gid: m[1], name: m[2].trim() });
+    if (found.length) tabs = found;
+  } catch (e) {
+    console.warn("Tab auto-detection unavailable, using DEFAULT_GID.", e);
+  }
+  if (!tabs.length) tabs = [{ gid: DEFAULT_GID, name: "so (current month)" }];
+  tabsFetchedAt = Date.now();
+
+  const sel = $("tabSelect");
+  if (tabs.length > 1){
+    sel.innerHTML = tabs.map(t => `<option value="${t.gid}">${esc(monthLabelFromTab(t.name))}</option>`).join("");
+    sel.classList.remove("hidden");
+  }
+}
+function pickMonthTab(){
+  const now = new Date();
+  const full = now.toLocaleString("en", { month: "long" }).toLowerCase();
+  const abbr = full.slice(0, 3);
+  const hit = tabs.find(t => t.name.toLowerCase().includes(full))
+           || tabs.find(t => t.name.toLowerCase().includes(abbr));
+  if (hit) return hit.gid;
+  const def = tabs.find(t => t.gid === DEFAULT_GID);
+  return def ? def.gid : tabs[0].gid;
+}
+
+/* ---------- data fetch + parse ---------- */
+async function fetchRows(gid){
+  const url = BASE + "/pub?gid=" + gid + "&single=true&output=csv&_cb=" + Date.now();
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("csv " + res.status);
+  const rows = parseCSV(await res.text());
+
+  let start = rows.findIndex(r => /tech/i.test(r[COL.tech] || ""));
+  start = start >= 0 ? start + 1 : 0;
+
+  const out = [];
+  for (let i = start; i < rows.length; i++){
+    const name = (rows[i][COL.tech] || "").trim();
+    if (!name){ if (out.length) break; else continue; }
+    if (/tech/i.test(name)) continue;
+    out.push({ name, group: num(rows[i][COL.group]), indiv: num(rows[i][COL.indiv]) });
+  }
+  return out;
+}
+
+/* ---------- rendering ---------- */
+function themeColors(){
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const css = getComputedStyle(document.documentElement);
+  return {
+    bar: css.getPropertyValue("--bar").trim(),
+    barTop: css.getPropertyValue("--bar-top").trim(),
+    grid: dark ? "#33332f" : "#e4e3dd",
+    tick: dark ? "#a3a29a" : "#6d6c66"
+  };
+}
+function upsertChart(key, canvasId, sorted, dec){
+  const c = themeColors();
+  const labels = sorted.map(r => r.name);
+  const data = sorted.map(r => key === "ind" ? r.indiv : r.group);
+  const colors = data.map((v, i) => (i < 3 && v > 0) ? c.barTop : c.bar);
+  const floor = dec === 2 ? 4 : 10;
+  const suggestedMax = Math.max(floor, Math.ceil(Math.max(0, ...data)));
+
+  if (charts[key]){
+    const ch = charts[key];
+    ch.data.labels = labels;
+    ch.data.datasets[0].data = data;
+    ch.data.datasets[0].backgroundColor = colors;
+    ch.options.scales.y.suggestedMax = suggestedMax;
+    ch.options.scales.y.grid.color = c.grid;
+    ch.options.scales.y.ticks.color = c.tick;
+    ch.options.scales.x.ticks.color = c.tick;
+    ch.update("none");
+    return;
+  }
+  charts[key] = new Chart($(canvasId), {
+    type: "bar",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: { topLeft: 3, topRight: 3 }, maxBarThickness: 18 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => " " + ctx.parsed.y.toFixed(dec) } }
+      },
+      scales: {
+        x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 65, font: { size: 11 }, color: c.tick }, grid: { display: false } },
+        y: { beginAtZero: true, suggestedMax, ticks: { font: { size: 11 }, color: c.tick, callback: (v) => Number(v).toFixed(dec) }, grid: { color: c.grid }, border: { display: false } }
+      }
+    }
+  });
+}
+function renderTable(elId, sorted, key, dec){
+  const rows = sorted.map((r, i) => {
+    const v = key === "ind" ? r.indiv : r.group;
+    const shown = (v === 0 && dec > 0) ? "–" : v.toFixed(dec);
+    const top = i < 3 && v > 0 ? ' class="top"' : "";
+    return `<tr${top}><td class="rank">${i + 1}</td><td>${esc(r.name)}</td><td class="num">${shown}</td></tr>`;
+  }).join("");
+  $(elId).innerHTML =
+    `<div class="tableWrap"><table>
+      <thead><tr><th>#</th><th>Technician</th><th class="num">SO count</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+function setStatus(ok, text){
+  const pill = $("status");
+  pill.classList.toggle("warn", !ok);
+  $("statusText").textContent = text;
+}
+
+/* ---------- refresh cycle ---------- */
+async function refresh(){
+  /* re-discover tabs occasionally (picks up next month's page automatically) */
+  if (Date.now() - tabsFetchedAt > 6 * 3600 * 1000) await loadTabs();
+  if (!manualPick){
+    const g = pickMonthTab();
+    if (g !== currentGid){ currentGid = g; if ($("tabSelect")) $("tabSelect").value = g; }
+  }
+  try {
+    const entries = await fetchRows(currentGid);
+    if (!entries.length) throw new Error("no rows found in columns L–N");
+
+    const byInd = [...entries].sort((a, b) => b.indiv - a.indiv);
+    const byGrp = [...entries].sort((a, b) => b.group - a.group);
+
+    upsertChart("ind", "chartInd", byInd, 2);
+    upsertChart("grp", "chartGrp", byGrp, 0);
+    renderTable("ind-table", byInd, "ind", 2);
+    renderTable("grp-table", byGrp, "grp", 0);
+
+    const tab = tabs.find(t => t.gid === currentGid);
+    $("pageTitle").textContent = "SO contribution — " +
+      (tab ? monthLabelFromTab(tab.name) : "") + " " + new Date().getFullYear();
+
+    lastGoodTime = new Date();
+    setStatus(true, "Updated " + lastGoodTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+    $("loadMsg").classList.add("hidden");
+    $("dash").classList.remove("hidden");
+  } catch (e) {
+    console.error(e);
+    if (lastGoodTime){
+      setStatus(false, "Connection issue — showing " + lastGoodTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " data");
+    } else {
+      setStatus(false, "Can't reach the sheet");
+      $("loadMsg").textContent = "Couldn't load data from the published sheet. Check that it's still published to the web, then reload.";
+    }
+  }
+}
+
+/* ---------- toggles + selector ---------- */
+document.querySelectorAll(".seg").forEach(seg => {
+  const target = seg.dataset.target;
+  seg.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+      $(target + "-chart").classList.toggle("hidden", btn.dataset.view !== "chart");
+      $(target + "-table").classList.toggle("hidden", btn.dataset.view !== "table");
+    });
+  });
+});
+$("tabSelect").addEventListener("change", (e) => {
+  manualPick = true;
+  currentGid = e.target.value;
+  setStatus(true, "Loading…");
+  refresh();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => refresh());
+
+/* ---------- boot ---------- */
+(async () => {
+  await loadTabs();
+  currentGid = pickMonthTab();
+  if ($("tabSelect") && tabs.length > 1) $("tabSelect").value = currentGid;
+  await refresh();
+  setInterval(refresh, REFRESH_SECONDS * 1000);
+})();
+</script>
+</body>
+</html>
