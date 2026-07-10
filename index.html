@@ -361,11 +361,12 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => refr
 (async () => {
   if (!COUNTER_URL) return;
   try {
-    const res = await fetch(COUNTER_URL);
+    const res = await fetch(COUNTER_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("counter " + res.status);
     const data = await res.json();
-    if (Number.isFinite(data.count)){
-      $("visitCount").textContent = Number(data.count).toLocaleString("en") + " visits";
+    const n = Number(data.count);
+    if (Number.isFinite(n)){
+      $("visitCount").textContent = n.toLocaleString("en") + " visits";
       $("visitCount").classList.remove("hidden");
     }
   } catch (e) {

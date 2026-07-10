@@ -23,8 +23,8 @@ Built July 2026, replacing a manual screenshot/export-from-Sheets workflow.
   The sheet also has an "SO value by individual contribution" column — not used here; this dashboard is counts only.
 
   **2026-07-09:** shifted one column right (was L/M/N = 11/12/13) after someone inserted a column ahead of the technician block on the `so july` tab. If the dashboard shows "couldn't load data" again but the sheet is confirmed still published and the CSV endpoint returns data, check for this first — fetch the raw CSV and diff actual column contents against `COL` before assuming a publish/connectivity issue.
-- Visit counter: separate Google Sheet `so-dashboard-counter` (count lives in A1) with a
-  bound Apps Script web app. Its `/exec` URL is baked into `index.html` as `COUNTER_URL`
+- Visit counter: separate Google Sheet `so-dashboard-counter` (count lives in A1, owned
+  by ianpuang48@gmail.com) with a bound Apps Script web app. Its `/exec` URL is baked into `index.html` as `COUNTER_URL`
   ("" disables the counter). One increment per page load; on any fetch failure the
   footer line stays hidden and the dashboard is unaffected.
 
