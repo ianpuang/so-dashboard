@@ -45,10 +45,11 @@ data is owned by us (a cell in a sheet).
 - On page load, a single `fetch(COUNTER_URL)`; on success, render the count.
 - The 60-second data-refresh loop does **not** touch the counter. A kiosk left open all
   day therefore counts as exactly 1 visit — intended behaviour.
-- Display: a small telemetry-style line (JetBrains Mono, muted colour, consistent with
-  the page's existing style) at the bottom of the page (footer position), e.g.
-  `1,234 visits` (thousands-separated). If the page has no footer today, add a minimal
-  one for this line only.
+- Display: a second line inside the page's existing `<footer>`, inheriting its style
+  (12px, muted `--faint` colour, centred), e.g. `1,234 visits` (thousands-separated).
+  (Amended 2026-07-10: the spec originally said JetBrains Mono, but this page uses
+  system fonts — that font belongs to the parent cylinder-detection design system, and
+  loading it here would add an external dependency for one line of text.)
 
 ## Error handling
 
