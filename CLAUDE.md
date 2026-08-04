@@ -11,7 +11,7 @@ Built July 2026, replacing a manual screenshot/export-from-Sheets workflow.
 ## Data source
 - Google Sheet, published to web. Publish key is baked into `index.html` as `PUB_KEY`:
   `2PACX-1vTxTi4jJQmXHlV7tG71ROZ_eXwnSUKU5oxOQ0YMQdRcXnTYrTk--TvbW9JkeMDZR_nAQECsSsqShTtH`
-- One tab per month, named like `so july`, `so august`. Tab in use when this was built: `so july`, gid `754850172` — stored as `DEFAULT_GID`, the fallback if tab auto-detection ever fails.
+- One tab per month, named like `so july`, `so august` (in practice the sheet's actual tab names have a `FOR BAR CHART` suffix, e.g. `SO AUGUST FOR BAR CHART` — auto-detection matches on month name/abbreviation being *contained* in the tab name, so the suffix doesn't break matching). Tab in use as of 2026-08-04: `so august`, gid `986560890` — stored as `DEFAULT_GID`, the fallback if tab auto-detection ever fails.
 - Columns (sheet letters vs. 0-indexed `COL` constant in code):
 
   | Sheet col | Code index | Contains |
@@ -28,6 +28,8 @@ Built July 2026, replacing a manual screenshot/export-from-Sheets workflow.
 1. On load and every `REFRESH_SECONDS` (60s), fetches `.../pub?gid=<gid>&output=csv`.
 2. Tab auto-detection: scrapes the `.../pubhtml` sheet-switcher menu for `{gid, name}` pairs, matches the current month's name/abbreviation against tab names, and switches automatically. Re-scans every 6 hours so a wall/kiosk display rolls into next month's tab on its own — no manual edit needed at month-end.
 3. If scraping fails (CORS, Google changes markup), falls back to `DEFAULT_GID`. Update that constant manually as an interim fix if auto-detection ever misbehaves.
+
+   **2026-08-04:** Google changed the `pubhtml` sheet-switcher markup from `<div id="sheet-button-N"><a>Name</a></div>` elements to a JS array (`items.push({name: "...", pageUrl: "...gid=N"})`). The old regex matched zero tabs against the new markup, so auto-detection had been silently falling back to `DEFAULT_GID` (stuck on `so july`) for an unknown period — the dashboard looked "not updating" for August but the real symptom was that the month dropdown never appeared at all. Fixed by adding a second regex for the new format (tried first, old format kept as fallback in `loadTabs()`). If tab auto-detection breaks again, fetch `.../pubhtml` raw and check what shape the tab list is in before assuming it's the same bug — Google may change the markup again.
 4. A month dropdown appears whenever more than one tab is detected, for browsing past months.
 
 ## Locked-in design decisions

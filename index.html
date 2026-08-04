@@ -123,7 +123,7 @@
 <script>
 /* ============ CONFIG ============ */
 const PUB_KEY = "2PACX-1vTxTi4jJQmXHlV7tG71ROZ_eXwnSUKU5oxOQ0YMQdRcXnTYrTk--TvbW9JkeMDZR_nAQECsSsqShTtH";
-const DEFAULT_GID = "754850172";      /* used if tab auto-detection fails (currently: so july) */
+const DEFAULT_GID = "986560890";      /* used if tab auto-detection fails (currently: so august) */
 const REFRESH_SECONDS = 60;           /* how often the page re-fetches the sheet */
 const COL = { tech: 12, group: 13, indiv: 14 };  /* 0-based: M, N, O */
 /* ================================ */
@@ -176,9 +176,15 @@ async function loadTabs(){
     if (!res.ok) throw new Error("pubhtml " + res.status);
     const html = await res.text();
     const found = [];
-    const re = /sheet-button-(\d+)[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
     let m;
-    while ((m = re.exec(html)) !== null) found.push({ gid: m[1], name: m[2].trim() });
+    /* current pubhtml markup: items.push({name: "...", pageUrl: "...gid=NNN"}) */
+    const reNew = /items\.push\(\{name:\s*"([^"]+)"\s*,\s*pageUrl:\s*"[^"]*[?&]gid=(\d+)/g;
+    while ((m = reNew.exec(html)) !== null) found.push({ gid: m[2], name: m[1] });
+    /* older pubhtml markup: <div id="sheet-button-N"><a>Name</a></div> — kept as fallback */
+    if (!found.length) {
+      const reOld = /sheet-button-(\d+)[^>]*>\s*<a[^>]*>([^<]+)<\/a>/g;
+      while ((m = reOld.exec(html)) !== null) found.push({ gid: m[1], name: m[2].trim() });
+    }
     if (found.length) tabs = found;
   } catch (e) {
     console.warn("Tab auto-detection unavailable, using DEFAULT_GID.", e);
