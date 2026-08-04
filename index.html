@@ -116,6 +116,7 @@
 
   <footer>
     Data source: published Google Sheet · sheet edits appear here within ~5 minutes (Google republish delay)
+    <div id="visitCount" class="hidden"></div>
   </footer>
 </div>
 
@@ -126,6 +127,7 @@ const PUB_KEY = "2PACX-1vTxTi4jJQmXHlV7tG71ROZ_eXwnSUKU5oxOQ0YMQdRcXnTYrTk--TvbW
 const DEFAULT_GID = "986560890";      /* used if tab auto-detection fails (currently: so august) */
 const REFRESH_SECONDS = 60;           /* how often the page re-fetches the sheet */
 const COL = { tech: 12, group: 13, indiv: 14 };  /* 0-based: M, N, O */
+const COUNTER_URL = "https://script.google.com/macros/s/AKfycbxXG0QLqrtpbuv7Bg7VdTJgYoOl2GjI8GaK1lYbv0T94OhkOJYYdrFDzSE1g8jhoK7v/exec";  /* Apps Script visit counter; "" disables */
 /* ================================ */
 
 const BASE = "https://docs.google.com/spreadsheets/d/e/" + PUB_KEY;
@@ -359,6 +361,23 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => refr
   if ($("tabSelect") && tabs.length > 1) $("tabSelect").value = currentGid;
   await refresh();
   setInterval(refresh, REFRESH_SECONDS * 1000);
+})();
+
+/* ---------- visit counter (runs once per page load) ---------- */
+(async () => {
+  if (!COUNTER_URL) return;
+  try {
+    const res = await fetch(COUNTER_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("counter " + res.status);
+    const data = await res.json();
+    const n = Number(data.count);
+    if (Number.isFinite(n)){
+      $("visitCount").textContent = n.toLocaleString("en") + " visits";
+      $("visitCount").classList.remove("hidden");
+    }
+  } catch (e) {
+    console.warn("Visit counter unavailable.", e);
+  }
 })();
 </script>
 </body>
