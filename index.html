@@ -126,7 +126,8 @@
 const PUB_KEY = "2PACX-1vTxTi4jJQmXHlV7tG71ROZ_eXwnSUKU5oxOQ0YMQdRcXnTYrTk--TvbW9JkeMDZR_nAQECsSsqShTtH";
 const DEFAULT_GID = "986560890";      /* used if tab auto-detection fails (currently: so august) */
 const REFRESH_SECONDS = 60;           /* how often the page re-fetches the sheet */
-const COL = { tech: 12, group: 13, indiv: 14 };  /* 0-based: M, N, O */
+const COL = { tech: 12, group: 13, indiv: 14 };  /* 0-based: M, N, O (only M, the roster, is read) */
+const JOB_COL = { techs: 4, perSO: 5 };          /* 0-based: E = technicians on the SO, F = technicians per SO */
 const COUNTER_URL = "https://script.google.com/macros/s/AKfycbxXG0QLqrtpbuv7Bg7VdTJgYoOl2GjI8GaK1lYbv0T94OhkOJYYdrFDzSE1g8jhoK7v/exec";  /* Apps Script visit counter; "" disables */
 /* ================================ */
 
@@ -221,14 +222,35 @@ async function fetchRows(gid){
   let start = rows.findIndex(r => /tech/i.test(r[COL.tech] || ""));
   start = start >= 0 ? start + 1 : 0;
 
-  const out = [];
+  /* Roster = the technician names listed in column M. */
+  const names = [];
   for (let i = start; i < rows.length; i++){
     const name = (rows[i][COL.tech] || "").trim();
-    if (!name){ if (out.length) break; else continue; }
+    if (!name){ if (names.length) break; else continue; }
     if (/tech/i.test(name)) continue;
-    out.push({ name, group: num(rows[i][COL.group]), indiv: num(rows[i][COL.indiv]) });
+    names.push(name);
   }
-  return out;
+
+  /* Counts are computed here from the job rows (col E technicians, col F
+     technicians-per-SO) instead of trusting the sheet's N/O formulas, whose
+     ranges have drifted (rows inserted above them, ranges cut short).
+     Matching mirrors the sheet: roster name contained in the col-E cell,
+     case-insensitive. Individual = sum of 1/n per SO; n from col F, or the
+     number of comma-separated names when F is blank. */
+  const jobs = [];
+  for (const r of rows){
+    const techs = (r[JOB_COL.techs] || "").trim();
+    if (!techs || /^technician/i.test(techs)) continue;
+    const n = num(r[JOB_COL.perSO]) || techs.split(",").filter(s => s.trim()).length || 1;
+    jobs.push({ techs: techs.toUpperCase(), share: 1 / n });
+  }
+
+  return names.map(name => {
+    const key = name.toUpperCase();
+    let group = 0, indiv = 0;
+    for (const j of jobs) if (j.techs.includes(key)){ group++; indiv += j.share; }
+    return { name, group, indiv: Math.round(indiv * 100) / 100 };
+  });
 }
 
 /* ---------- rendering ---------- */

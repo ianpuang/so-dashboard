@@ -20,6 +20,8 @@ Built July 2026, replacing a manual screenshot/export-from-Sheets workflow.
   | N | 13 | SO count — group contribution |
   | O | 14 | SO count — individual contribution |
 
+  **2026-11-09: N and O are no longer read.** The dashboard now computes both counts itself from the job rows: col E (index 4, technicians on the SO, comma-separated) and col F (index 5, technicians per SO), via `JOB_COL`. Group = number of SOs whose col-E cell contains the roster name (case-insensitive substring, same as the sheet's own formulas — reproduces Jun–Sep sheet totals exactly). Individual = sum of 1/n per SO, with n from col F, or the name count when F is blank. Column M is still read for the roster. Reason: the sheet's N/O formula ranges kept drifting. On November, 6 rows inserted directly under the header pushed the range start down to ~row 9, so Noel and 8 others were undercounted. On October, the individual formula range stopped around row 135 and missed the W-series jobs. Side effect: dashboard numbers can differ from the sheet's N/O when those formulas are wrong. That's intended.
+
   The sheet also has an "SO value by individual contribution" column — not used here; this dashboard is counts only.
 
   **2026-07-09:** shifted one column right (was L/M/N = 11/12/13) after someone inserted a column ahead of the technician block on the `so july` tab. If the dashboard shows "couldn't load data" again but the sheet is confirmed still published and the CSV endpoint returns data, check for this first — fetch the raw CSV and diff actual column contents against `COL` before assuming a publish/connectivity issue.
