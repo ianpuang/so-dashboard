@@ -128,6 +128,7 @@ const DEFAULT_GID = "986560890";      /* used if tab auto-detection fails (curre
 const REFRESH_SECONDS = 60;           /* how often the page re-fetches the sheet */
 const COL = { tech: 12, group: 13, indiv: 14 };  /* 0-based: M, N, O (only M, the roster, is read) */
 const JOB_COL = { techs: 4, perSO: 5 };          /* 0-based: E = technicians on the SO, F = technicians per SO */
+const HIDE_NAMES = ["DANNY", "ADAM", "ALEX", "MARSEILLE"];  /* never shown, even if in the sheet */
 const COUNTER_URL = "https://script.google.com/macros/s/AKfycbxXG0QLqrtpbuv7Bg7VdTJgYoOl2GjI8GaK1lYbv0T94OhkOJYYdrFDzSE1g8jhoK7v/exec";  /* Apps Script visit counter; "" disables */
 /* ================================ */
 
@@ -245,7 +246,16 @@ async function fetchRows(gid){
     jobs.push({ techs: techs.toUpperCase(), share: 1 / n });
   }
 
-  return names.map(name => {
+  /* Add anyone named on a job row (col E) who isn't covered by the roster. */
+  const covered = (t) => names.some(n => t.includes(n.toUpperCase()));
+  for (const j of jobs)
+    for (let t of j.techs.split(",")){
+      t = t.trim();
+      if (t && !covered(t)) names.push(t);
+    }
+
+  const hidden = new Set(HIDE_NAMES.map(n => n.toUpperCase()));
+  return names.filter(n => !hidden.has(n.toUpperCase())).map(name => {
     const key = name.toUpperCase();
     let group = 0, indiv = 0;
     for (const j of jobs) if (j.techs.includes(key)){ group++; indiv += j.share; }
